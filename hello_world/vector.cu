@@ -6,18 +6,17 @@ using namespace std;
 //#define g 10/2
 void random_ints(int *a, int tam){
    for (int i =0; i < tam; ++i){
-   		a[i] = 1+rand()%10;
+   		a[i] = 1;//+rand()%10;
    }
 }
 
-
-
 void imprimir(int *&v, int tam){
-	for(int i=tam-80;i<tam;i++){
+	for(int i=0;i<tam;i++){
 		cout<<v[i]<<" ";
 	}
 	cout<<endl;
 }
+
 //=================cuda=================
 __global__ void add(int *a, int *b, int *r) {
 	int index = threadIdx.x + blockIdx.x * blockDim.x;
@@ -46,8 +45,8 @@ void cuda_suma(int *a, int *b, int *r, int tam ){
 	//copiar DEVICE -> HOST	
 	cudaMemcpy(r, d_r, size, cudaMemcpyDeviceToHost);//retornar a host
 	//liberar memoria
-	free(a); free(b); free(r);
 	cudaFree(d_a); cudaFree(d_b); cudaFree(d_r);
+	
 }
 
 
@@ -55,7 +54,7 @@ void cuda_suma(int *a, int *b, int *r, int tam ){
 
 
 int main(void){
-	int tam = 10000; //250 000
+	int tam = 100; //250 000
 	int *a, *b, *r;
 	a = (int*)malloc(tam*sizeof(int));
 	b = (int*)malloc(tam*sizeof(int));
@@ -65,13 +64,9 @@ int main(void){
 
 	//suma(a,b,r,tam);
 	cuda_suma(a,b,r,tam);
-	imprimir(a,tam);
-	imprimir(b,tam);
+	//imprimir(a,tam);
+	//imprimir(b,tam);
 	imprimir(r,tam);
+	free(a); free(b); free(r);
 	return 0;
 }
-
-
-
-
-

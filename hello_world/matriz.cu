@@ -5,20 +5,19 @@
 
 using namespace std;
 //4000x4000 8
-#define row 2000
-#define column 2000
+#define row 50
+#define column 65
 
-#define THREADS_PER_BLOCK 64//1024//8
+#define THREADS_PER_BLOCK 1024//64//1024//8
 
 // Funcion para generar numeros randoms en mi matrix:
 void randomsInt(int **& matrix){
     for(int i=0;i<row;++i){
-	    for(int j=0;j<column;++j){
-            matrix[i][j]=rand()% 2 + 1;
+      for(int j=0;j<column;++j){
+            matrix[i][j] = 1; //rand()% 2 + 1;;
         }
     }
 }
-
 
 void imprimir(int **&M, int rows, int cols){
     for(int i=0;i<rows;i++){
@@ -29,8 +28,6 @@ void imprimir(int **&M, int rows, int cols){
     }
     cout<<endl;
 }
-
-
 
 void resize(int **&M,int rows, int cols){
     M = (int **) malloc(rows * sizeof(int*)) ;
@@ -47,7 +44,6 @@ void resize_matrix(int**& host, int rows, int cols ){
         host[i]=host[i-1]+cols;
     }
 }
-
 
 // Funcion imprimir:
 void print(int ** a){
@@ -107,7 +103,6 @@ void suma_cuda(int **a, int **b, int **c, int rows, int cols){
     cudaFree(a_aux); cudaFree(b_aux); cudaFree(c_aux);
     //cudaFree(a_aux[0]);cudaFree(c_aux[0]);
 }
-
 // =====================================================================
 
 
@@ -122,10 +117,11 @@ int main(){
     randomsInt(b);
     //imagebn a, imagen b, imagen c (fx)
     suma_cuda(a,b,c,rows,cols);
-    //imprimir(a,rows,cols);
-   // imprimir(b,rows,cols);
+    imprimir(a,rows,cols);
+    imprimir(b,rows,cols);
     imprimir(c,rows,cols);
     free(a); free(b); free(c);
 
     return 0;
 }
+
