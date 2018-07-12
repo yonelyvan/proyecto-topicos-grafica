@@ -1,76 +1,114 @@
+#include <opencv2/highgui/highgui.hpp>
 #include <bits/stdc++.h>
+using namespace cv;
 using namespace std;
+#define THREADS_PER_BLOCK 1024//1024
 
-#define THREADS_PER_BLOCK 1024
 
-void initData(int* M, int rows, int cols){
-	for (int i=0; i<rows*cols; i++){
-		//for(int j=0; j<cols; j++){
-			//M[cols * i + j] = 1;
-			M[i] = 1;
-		//}
+//=======================CUDA================================
+__global__ void k_gris(int *a, int *b, int *c, int value, int tam) {
+	int index = threadIdx.x + blockIdx.x * blockDim.x;
+	if( index < tam){
+		int t = (a[index] + b[index] + c[index])/3;
+		a[index] = t; 
+		b[index] = t;
+		c[index] = t;
 	}
 }
 
-void displayData(int *M, int rows, int cols){
-	for (int i=0; i<rows; i++){
-		for(int j=0; j<cols; j++){
-			cout<< M[cols * i + j]<<" ";
-		}
-		cout<<endl;
+__global__ void k_brillo(int *a, int *b, int *c, int value, int tam) {
+	int index = threadIdx.x + blockIdx.x * blockDim.x;
+	if( index < tam){
+		a[index] += value; 
+		b[index] += value;
+		c[index] += value;
 	}
 }
 
-__global__ void matrixAddKernel(int *A, int *B, int *R, int rows){
-	int size = rows * rows; //Remember: square matrices
-	int i = threadIdx.x + blockDim.x * blockIdx.x;
-	if (i<size){
-		R[i] = A[i] + B[i];
-	}
-}
-
-void matrixAdd(int *A, int *B, int* R, int rows, int cols){
-	size_t size = rows * cols * sizeof(int);
-	int * d_A;
-	int * d_B;
-	int * d_R;
+void cuda_add_brillo(int *A, int *B, int* C,int value, int rows, int cols){
+	int *d_A, *d_B, *d_C;
+	int nElem = rows * cols;
+	int size = nElem * sizeof(int);
 	//Allocate device memory for matrices
 	cudaMalloc((void **) &d_A, size);
 	cudaMalloc((void **) &d_B, size);
-	cudaMalloc((void **) &d_R, size);
-
+	cudaMalloc((void **) &d_C, size);
 	//Copy B and C to device memory
 	cudaMemcpy(d_A, A, size, cudaMemcpyHostToDevice);
 	cudaMemcpy(d_B, B, size, cudaMemcpyHostToDevice);
-
-	matrixAddKernel <<< ceil((double)(size)/THREADS_PER_BLOCK), THREADS_PER_BLOCK>>>(d_A, d_B, d_R, rows);
-
-	cudaMemcpy(R, d_R, size, cudaMemcpyDeviceToHost);
+	cudaMemcpy(d_C, C, size, cudaMemcpyHostToDevice);
+	//run
+	k_gris<<<(nElem+THREADS_PER_BLOCK-1)/THREADS_PER_BLOCK,THREADS_PER_BLOCK>>>(d_A, d_B, d_C,value, nElem);//run
+	k_brillo<<<(nElem+THREADS_PER_BLOCK-1)/THREADS_PER_BLOCK,THREADS_PER_BLOCK>>>(d_A, d_B, d_C,value, nElem);//run
+	
+	cudaMemcpy(A, d_A, size, cudaMemcpyDeviceToHost);
+	cudaMemcpy(B, d_B, size, cudaMemcpyDeviceToHost);
+	cudaMemcpy(C, d_C, size, cudaMemcpyDeviceToHost);
 	//Free device matrices
 	cudaFree(d_B);
 	cudaFree(d_A);
-	cudaFree(d_R);
+	cudaFree(d_C);
+}
+
+//======================OPEN-CV=================================
+//brillo en serial
+void CPU_add_brillo(int *R,int *G,int *B, int value, int rows, int cols){
+    for (int i=0; i<rows; i++){
+        for(int j=0; j<cols; j++){
+            R[cols * i + j] += value;
+            G[cols * i + j] += value;
+            B[cols * i + j] += value;
+        }
+    }
+}
+
+Mat brillo_cuda(Mat &image, int value){
+    int rows = image.rows;
+    int cols = image.cols;
+    int nElem = rows * cols;
+    int * R = (int *) malloc(nElem * sizeof(int));
+    int * G = (int *) malloc(nElem * sizeof(int));
+    int * B = (int *) malloc(nElem * sizeof(int));
+
+    //load IMG
+    for( int i = 0; i < image.rows; i++ ){
+        for( int j = 0; j < image.cols; j++ ){
+        	int r = image.at<Vec3b>(i,j)[0];
+        	int g = image.at<Vec3b>(i,j)[1];
+        	int b = image.at<Vec3b>(i,j)[2];
+            R[cols*i+j] = r;
+            G[cols*i+j] = g;
+            B[cols*i+j] = b;
+
+        }
+    }
+    cuda_add_brillo(R,G,B,value,rows,cols);
+    //CPU_add_brillo(R,G,B,value,rows,cols);
+
+    Mat new_image = Mat::zeros( image.size(), image.type() );
+    for( int i = 0; i < image.rows; i++ ){
+        for( int j = 0; j < image.cols; j++ ){
+            new_image.at<Vec3b>(i,j)[0] = saturate_cast<uchar>( R[cols*i+j] );
+            new_image.at<Vec3b>(i,j)[1] = saturate_cast<uchar>( G[cols*i+j] );
+            new_image.at<Vec3b>(i,j)[2] = saturate_cast<uchar>( B[cols*i+j] );
+        }
+    }
+    free(R);free(G);free(B);
+    return new_image;
+}
+
+void aumentar_brillo(){
+    Mat img = imread("img.jpg", CV_LOAD_IMAGE_COLOR);
+    imshow( "original", img ); 
+    
+    Mat img2 =brillo_cuda(img,-50);
+    imshow( "brillo", img2 ); 
+    waitKey(0);
 }
 
 
-
-
-
-int main(int argc, char** argv){
-	//int numRows = 20;
-	int rows = 100;
-	int cols = 40;
-	
-	int nElem = rows * cols;
-
-	int * A = (int *) malloc(nElem * sizeof(int));
-	int * B = (int *) malloc(nElem * sizeof(int));
-	int * R = (int *) malloc(nElem * sizeof(int));
-
-	initData(B, rows, cols);
-	initData(A, rows, cols);
-	matrixAdd(A, B, R, rows, cols);
-	displayData(R, rows, cols);
-
-	free(A); free(B); free(R);
+int main(){
+	aumentar_brillo();
+	//run();
+	return 0;
 }

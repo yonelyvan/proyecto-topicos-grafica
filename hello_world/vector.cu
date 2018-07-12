@@ -54,7 +54,7 @@ void cuda_suma(int *a, int *b, int *r, int tam ){
 
 
 int main(void){
-	int tam = 100; //250 000
+	int tam = 300*300; //250 000
 	int *a, *b, *r;
 	a = (int*)malloc(tam*sizeof(int));
 	b = (int*)malloc(tam*sizeof(int));
