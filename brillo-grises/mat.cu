@@ -17,6 +17,7 @@ __global__ void k_gris(int *a, int *b, int *c, int value, int tam) {
 	}
 }
 
+
 __global__ void k_contaste(int *a, int *b, int *c, float value, int tam) {
     int index = threadIdx.x + blockIdx.x * blockDim.x;
     if( index < tam){
@@ -34,6 +35,31 @@ __global__ void k_brillo(int *a, int *b, int *c, int value, int tam) {
 		c[index] += value;
 	}
 }
+__global__ void blur(int *a, int *b, int *c, int rows, int cols) {
+	int tam = rows*cols;
+	int index = threadIdx.x + blockIdx.x * blockDim.x;
+	int mascara[3][3] = {{1,2,1},{2,4,2},{1,2,1}};
+	if(index < tam){
+		//contro de extremos arriba abajo && izquierda derecha 
+		if( (0<index%cols && index%cols<(rows-1)) && ( 0<index/cols && index/cols<(cols-1)) ){
+			int rr=0;
+			int gg=0;
+			int bb=0;
+			int id = index-cols-1; //estremo superior-izquierdo
+			for (int i = 0; i < 3; ++i){
+				for (int j = 0; j < 3; ++j){
+					rr += a[id +(i*cols) +j]*mascara[i][j];		
+					gg += b[id +(i*cols) +j]*mascara[i][j];		
+					bb += c[id +(i*cols) +j]*mascara[i][j];		
+				}
+			}
+			a[index] = rr/16; 
+			b[index] = gg/16;
+			c[index] = bb/16;
+		}
+	}
+}
+
 
 void CUDA_process_img(int *A, int *B, int* C,int value, int rows, int cols){
 	int *d_A, *d_B, *d_C;
@@ -51,6 +77,7 @@ void CUDA_process_img(int *A, int *B, int* C,int value, int rows, int cols){
 	k_gris<<<(nElem+THREADS_PER_BLOCK-1)/THREADS_PER_BLOCK,THREADS_PER_BLOCK>>>(d_A, d_B, d_C,value, nElem);//run
     k_contaste<<<(nElem+THREADS_PER_BLOCK-1)/THREADS_PER_BLOCK,THREADS_PER_BLOCK>>>(d_A, d_B, d_C,1.9, nElem);//run
 	k_brillo<<<(nElem+THREADS_PER_BLOCK-1)/THREADS_PER_BLOCK,THREADS_PER_BLOCK>>>(d_A, d_B, d_C,-100, nElem);//run
+	blur<<<(nElem+THREADS_PER_BLOCK-1)/THREADS_PER_BLOCK,THREADS_PER_BLOCK>>>(d_A, d_B, d_C,rows, cols);//run
 	
 	cudaMemcpy(A, d_A, size, cudaMemcpyDeviceToHost);
 	cudaMemcpy(B, d_B, size, cudaMemcpyDeviceToHost);
@@ -109,7 +136,7 @@ Mat brillo_cuda(Mat &image, int value){
 }
 
 void aumentar_brillo(){
-    Mat img = imread("img_24.jpg", CV_LOAD_IMAGE_COLOR);
+    Mat img = imread("img.jpg", CV_LOAD_IMAGE_COLOR);
     imshow( "original", img ); 
     
     Mat img2 =brillo_cuda(img,50);
