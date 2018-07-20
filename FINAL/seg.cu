@@ -49,6 +49,7 @@ void loadRawImage(string filename, int* r, int* g, int* b, int size){
     }
 }
 
+//mostrar y guardar imagen
 void imprimir_resultado(string filename, int* labelArray, int* redCentroid, int* greenCentroid, int* blueCentroid, int size){
 	Mat image = imread(filename, CV_LOAD_IMAGE_COLOR);
 	Mat new_image = Mat::zeros( image.size(), image.type() );
@@ -62,7 +63,7 @@ void imprimir_resultado(string filename, int* labelArray, int* redCentroid, int*
         	new_image.at<Vec3b>(y,x)[2] = saturate_cast<uchar>( blueCentroid[labelArray[i]] );
         }
     }
-    //imwrite("out_"+filename,new_image);
+    imwrite("out_"+filename,new_image);
    	imshow( "resultado", new_image );
 }
 //________________________________
