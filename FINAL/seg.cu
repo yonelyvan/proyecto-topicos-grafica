@@ -28,33 +28,9 @@ __constant__ int dev_RedCentroid[20];
 __constant__ int dev_GreenCentroid[20];
 __constant__ int dev_BlueCentroid[20];
 //**********************************
-
-//get RGB values from Initial Centroids (RAW format)
-bool loadPalette(char* filename, int nCentroids, int* redCentroid, int* greenCentroid, int*  blueCentroid) {
-	FILE *imageFile;
-	int length = 0;
-	imageFile = fopen(filename,"r");
-	if (imageFile == NULL) {
-		return false;
-	} else {
-		for (int i = 0; i < nCentroids; i++) {
-			// R,G,B Centroid triple, nCentroids long
-			redCentroid[i] = fgetc(imageFile);
-			greenCentroid[i] = fgetc(imageFile);
-			blueCentroid[i] = fgetc(imageFile);
-			printf("%d, %d, %d\n",redCentroid[i], greenCentroid[i], blueCentroid[i] );
-			length++;
-		}
-		fclose(imageFile);
-		printf("\n");
-		//printf("Palette Length: %d\n", length);
-		return true;
-	}
-}
-
 //opencv________________________________
-void loadRawImage(char* filename, int* r, int* g, int* b, int size){
-	Mat image = imread("img.jpg", CV_LOAD_IMAGE_COLOR);
+void loadRawImage(string filename, int* r, int* g, int* b, int size){
+	Mat image = imread(filename, CV_LOAD_IMAGE_COLOR);
     imshow( "original", image ); 
     //load IMG
     int cols = image.cols;
@@ -73,8 +49,8 @@ void loadRawImage(char* filename, int* r, int* g, int* b, int size){
     }
 }
 
-void writeRawImage(char* filename, int* labelArray, int* redCentroid, int* greenCentroid, int* blueCentroid, int size){
-	Mat image = imread("img.jpg", CV_LOAD_IMAGE_COLOR);
+void imprimir_resultado(string filename, int* labelArray, int* redCentroid, int* greenCentroid, int* blueCentroid, int size){
+	Mat image = imread(filename, CV_LOAD_IMAGE_COLOR);
 	Mat new_image = Mat::zeros( image.size(), image.type() );
 	int cols = image.cols;
     //int rows = image.rows;
@@ -183,17 +159,17 @@ __global__ void newCentroids(int *dev_tempRedCentroid, int *dev_tempGreenCentroi
 }
 
 
-int main(int argc, char *argv[]) {
 
-		Mat image = imread("img.jpg", CV_LOAD_IMAGE_COLOR);
+
+
+int run(string img_name, int nCentroids, int nIterations) {
+		Mat image = imread(img_name, CV_LOAD_IMAGE_COLOR);
     	imshow( "original", image ); 
 		// init device
 		cudaSetDevice(0);
 		cudaDeviceSynchronize();
 		cudaThreadSynchronize();
 
-		//input raw file, output raw file, input palette raw file containing RGB values of initial centroids
-		char *inputFile, *outputFile, *palette;
 		//Pixels' r,g,b values. Centroid's r,g,b values
 		int *red, *green, *blue, *redCentroid, *greenCentroid, *blueCentroid;
 
@@ -204,7 +180,7 @@ int main(int argc, char *argv[]) {
 
 		// local variables for storing image width, height
 		// number of cluster, number of iterations, linear size of the image ( = width * height)
-		int width, height, nCentroids, nIterations,size;
+		int width, height,size;
 		//int IMAGE_BYTES, PALETTE_BYTES;
 
 		// ref to array where pixels' count are stored
@@ -213,41 +189,19 @@ int main(int argc, char *argv[]) {
 		int *sumRed, *sumGreen, *sumBlue;
 		int *dev_sumRed, *dev_sumGreen, *dev_sumBlue;
 
-		// checking arguments
-		if (argc > 7) {
-			inputFile = argv[1];
-			outputFile = argv[2];
-			width = atoi(argv[3]);
-			height = atoi(argv[4]);
-			palette = argv[5];
-			nCentroids = atoi(argv[6]);  // remind to update hardcoded nCentroids above
-			if(nCentroids > 256)
-				nCentroids = 256;
-			nIterations = atoi(argv[7]);
-			if(nIterations > 15)
-				nIterations = 15;
-
-		} else {
-			printf("  USAGE: kmeans.cu <inputfile.raw> <outputfile.raw> nRows nCols palette nCentroids nItarations \n");
-			printf("           <inputfile.raw>: input .raw file (sequence of bytes)\n");
-			printf("          <outputfile.raw>: output .raw file\n");
-			printf("                  nRows: the number of rows of the image\n");
-			printf("                  nCols: the number of columns of the image\n");
-			printf("			      palette: RGB initial Centroids");
-			printf("			   nCentroids: number of clusters");
-			printf("			  nIterations: number of iterations of K-Means");
-
-			return 0;
-		}
+		width = image.cols;
+		height = image.rows;
+		
 
 		// Setting image and palette size in bytes
 		IMAGE_BYTES = width * height * sizeof(int);
 		PALETTE_BYTES = nCentroids * sizeof(int);
 		size = width * height;
 
-		printf("Image: %s\n",inputFile);
+		cout<<"Imagen: "<<img_name<<endl;
 		printf("Width: %d, Height: %d\n", width, height);
-		printf("#Clusters: %d, #Iterations: %d\n", nCentroids, nIterations);
+		cout<<"#Clusters: "<<nCentroids<<endl;
+		cout<<"#Iteraciones: "<<nIterations<<endl;
 
 
 		// allocate memory on CPU
@@ -263,11 +217,8 @@ int main(int argc, char *argv[]) {
 		sumBlue = static_cast<int*>(malloc(PALETTE_BYTES));
 		pixelClusterCounter = static_cast<int*>(malloc(PALETTE_BYTES));
 
-		//centroides iniciales
-		printf("Initial Centroids: \n");
-		loadPalette(palette, nCentroids, redCentroid, greenCentroid, blueCentroid);
 		// Cargar imagen en arrays r, g, b
-		loadRawImage(inputFile, red, green, blue, size);
+		loadRawImage(img_name, red, green, blue, size);
 
 		if(IMAGE_BYTES == 0 || PALETTE_BYTES == 0) {
 			return -1;
@@ -304,10 +255,17 @@ int main(int argc, char *argv[]) {
 
 		// Clearing centroids on host
 		for(int i = 0; i < nCentroids; i++) {
-			redCentroid[i] = 0;
-			greenCentroid[i] = 0;
-			blueCentroid[i] = 0;
+			redCentroid[i] = rand()%255;//0;
+			greenCentroid[i] = rand()%255;//0;
+			blueCentroid[i] = rand()%255;//0;
 		}
+
+		printf("\n");
+		printf("Centroides Iniciales:\n");
+		for(int i = 0; i < nCentroids; i++) {
+			printf("%d) [ %d, %d, %d ]\n",i, redCentroid[i], greenCentroid[i], blueCentroid[i]);
+		}
+		printf("\n");
 
 		// Defining grid size
 		int BLOCK_X, BLOCK_Y;
@@ -325,7 +283,7 @@ int main(int argc, char *argv[]) {
 	 	//Each dimension is fixed
 		dim3 dimBLOCK(BLOCK_SIZE,BLOCK_SIZE);
 
-		printf("Launching K-Means Kernels..	\n");
+		printf("Run K-Means Kernels:\n");
 		//Iteration of kmeans algorithm
 		for(int i = 0; i < nIterations; i++) {
 			cout<<"Iteracion: "<<i<<endl;
@@ -369,37 +327,17 @@ int main(int argc, char *argv[]) {
 		//printf("Kmeans code ran in: %f msecs.\n", timer.Elapsed());
 		printf("\n");
 
-		// labelArray DEBUG
-		int counter = 0;
-
-		printf("Label Array:\n");
-		for(int i = 0; i < (size); i++) {
-			//printf("%d\n", labelArray[i]);
-			counter++;
-		}
-		printf("printing counter %d\n", counter);
-		counter = 0;
-
-		printf("Sum Arrays:\n");
-		for(int j = 0; j < nCentroids; j++) {
-			printf("r: %u g: %u b: %u \n", sumRed[j], sumGreen[j], sumBlue[j]);
-			counter++;
-		}
-
-		printf("\n");
-
-		printf("Pixels per centroids:\n");
+		printf("Pixels por centroide:\n");
 		for(int k = 0; k < nCentroids; k++){
-			printf("%d centroid: %d pixels\n", k, pixelClusterCounter[k]);
+			printf("%d) centroid: %d pixels\n", k, pixelClusterCounter[k]);
 		}
 		printf("\n");
-		printf("New centroids:\n");
+		printf("Centroides Finales:\n");
 		for(int i = 0; i < nCentroids; i++) {
-			printf("%d, %d, %d \n", redCentroid[i], greenCentroid[i], blueCentroid[i]);
+			printf("%d) [ %d, %d, %d ]\n",i, redCentroid[i], greenCentroid[i], blueCentroid[i]);
 		}
-		//escribiendo
-		cout<<"guardando Imagen"<<endl;
-		writeRawImage(outputFile,labelArray, redCentroid, greenCentroid,  blueCentroid,  size);
+		//Imprimir imagen resultado
+		imprimir_resultado(img_name,labelArray, redCentroid, greenCentroid,  blueCentroid,  size);
 
 		free(red);
 		free(green);
@@ -424,18 +362,20 @@ int main(int argc, char *argv[]) {
 		CUDA_CALL(cudaFree(dev_sumGreen));
 		CUDA_CALL(cudaFree(dev_sumBlue));
 		CUDA_CALL(cudaFree(dev_pixelClusterCounter));
-
-		printf("That's the end.\n");
-
-	
-	//waitKey(0);
+	//_______________________________________
 	double fps = 60;
-    // calcular el tiempo de espera entre cada imagen a mostrar
     int delay = 1000 / fps;
     while (true){
         if(waitKey(delay) == 27) break;
     }
+
 	return 0;
 }
 
 
+int main(){
+	string img_name="img.jpg";
+	//imgname.centorides,iteraciones
+	run(img_name,8,40);
+	return 0;
+}
