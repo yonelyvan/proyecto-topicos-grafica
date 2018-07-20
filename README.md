@@ -1,1 +1,1 @@
-# proyecto-topicos-grafica
+# Proyecto final de tópicos en computación gráfica

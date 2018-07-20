@@ -62,7 +62,8 @@ void imprimir_resultado(string filename, int* labelArray, int* redCentroid, int*
         	new_image.at<Vec3b>(y,x)[2] = saturate_cast<uchar>( blueCentroid[labelArray[i]] );
         }
     }
-   imshow( "resultado", new_image );
+    imwrite("out_"+filename,new_image);
+   	imshow( "resultado", new_image );
 }
 //________________________________
 //  Clears arrays before each kernel getClusterLabel iteration
@@ -338,6 +339,7 @@ int run(string img_name, int nCentroids, int nIterations) {
 		}
 		//Imprimir imagen resultado
 		imprimir_resultado(img_name,labelArray, redCentroid, greenCentroid,  blueCentroid,  size);
+		//guardar imagen
 
 		free(red);
 		free(green);
@@ -376,6 +378,6 @@ int run(string img_name, int nCentroids, int nIterations) {
 int main(){
 	string img_name="img.jpg";
 	//imgname.centorides,iteraciones
-	run(img_name,8,40);
+	run(img_name,5,40);//2,5,10
 	return 0;
 }
