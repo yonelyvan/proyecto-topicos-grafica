@@ -1,5 +1,5 @@
-//nvcc file.cu -o m `pkg-config opencv --cflags --libs`
-//./m colosseo.raw out.raw 1000 1000 5 5 10
+//nvcc seg.cu -o m `pkg-config opencv --cflags --libs`
+//./m
 #include <opencv2/highgui/highgui.hpp>
 #include <bits/stdc++.h>
 using namespace cv;
@@ -62,7 +62,7 @@ void imprimir_resultado(string filename, int* labelArray, int* redCentroid, int*
         	new_image.at<Vec3b>(y,x)[2] = saturate_cast<uchar>( blueCentroid[labelArray[i]] );
         }
     }
-    imwrite("out_"+filename,new_image);
+    //imwrite("out_"+filename,new_image);
    	imshow( "resultado", new_image );
 }
 //________________________________
@@ -376,8 +376,14 @@ int run(string img_name, int nCentroids, int nIterations) {
 
 
 int main(){
+
 	string img_name="img.jpg";
 	//imgname.centorides,iteraciones
+	unsigned t0, t1;
+	t0=clock();
 	run(img_name,5,40);//2,5,10
+	t1 = clock();
+	double time = (double(t1-t0)/CLOCKS_PER_SEC);
+	cout << "Tiempo de ejecucion: " << time << endl;
 	return 0;
 }
