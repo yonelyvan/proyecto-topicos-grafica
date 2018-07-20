@@ -18,7 +18,7 @@ FINAL/seg.cu
 
 
 ## Tiempos
-- Se uso una tarjeta grafica Nvidia GeForce GT 740m con 384 Núcleos CUDA.
+- Se uso una tarjeta grafica Nvidia GeForce GT 740 con 384 Núcleos CUDA.
 - Se probó en una imagen de 2048x1336.
 
 ```
