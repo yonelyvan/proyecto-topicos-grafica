@@ -1,3 +1,4 @@
+// probado en cuda 10.1 agosto 2020
 // nvcc suma.cu -o v && ./v
 #include <bits/stdc++.h>
 using namespace std;
