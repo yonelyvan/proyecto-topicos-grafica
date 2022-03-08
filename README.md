@@ -1,7 +1,6 @@
 # Proyecto final de tópicos en computación gráfica
 ## Alumno:
-- Mamani Mamani Yonel Yvan
-
+- Yonel Mamani
 ## Título del paper:
 - Image Segmentation using K-means Clustering Algorithm and Subtractive Clustering Algorithm
 
